@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notary — Human Approval for Irreversible Agent Actions</title>
+<style>
+  :root { --ink:#1a1a2e; --accent:#e94560; --paper:#f5f0e8; --ok:#2ec4b6; --warn:#f4a261; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,sans-serif; background:var(--paper); color:var(--ink); }
+  header { padding:16px 24px; background:var(--ink); color:#fff; display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:20px; margin:0; letter-spacing:.5px; }
+  header .tag { font-size:12px; opacity:.75; }
+  .wrap { max-width:760px; margin:24px auto; padding:0 20px; }
+  .card { background:#fff; border-radius:14px; padding:22px 26px; box-shadow:0 3px 14px rgba(0,0,0,.1); margin-bottom:18px; }
+  .card h2 { margin:0 0 6px; font-size:17px; }
+  .card p { margin:0 0 12px; font-size:14px; color:#444; line-height:1.5; }
+  label { display:block; font-size:13px; font-weight:700; margin:12px 0 4px; }
+  input, select { width:100%; padding:10px 12px; border:1px solid #ccc; border-radius:8px; font-size:14px; }
+  .btn { padding:10px 18px; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:700; }
+  .btn.primary { background:var(--accent); color:#fff; }
+  .btn.ghost { background:#eee; color:var(--ink); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .approval { border:2px solid var(--warn); background:#fff8f0; }
+  .approval .amount { font-size:26px; font-weight:800; color:var(--accent); }
+  .approval .detail { font-size:14px; margin:4px 0; }
+  .approval .warn { font-size:12px; color:#b0223a; font-weight:700; }
+  #audit { font-family:monospace; font-size:12px; background:#1a1a2e; color:#7ee787; padding:14px; border-radius:8px; white-space:pre-wrap; max-height:200px; overflow:auto; }
+  .pill { display:inline-block; padding:2px 10px; border-radius:99px; font-size:11px; font-weight:800; }
+  .pill.agent { background:#d4f7f3; color:#0b7d70; }
+  .pill.human { background:#fde2e6; color:#b0223a; }
+  .pill.pending { background:#fff3cd; color:#856404; }
+  .pill.approved { background:#d4edda; color:#155724; }
+  .status { font-size:13px; margin-top:10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚖️ Notary</h1>
+  <span class="tag">Human approval for irreversible agent actions</span>
+  <span class="pill agent">AGENT</span><span class="pill human">HUMAN</span>
+</header>
+
+<div class="wrap">
+  <!-- Step 1: User gives the agent an instruction -->
+  <div class="card">
+    <h2>1. Tell the agent what to do</h2>
+    <p>An agent will prepare the action. When it reaches an <b>irreversible step</b>, Notary pauses and asks <i>you</i> to approve.</p>
+    <label for="instruction">Instruction</label>
+    <input id="instruction" value="Pay invoice #2041 for $1,200 to Acme Corp" />
+    <div style="margin-top:12px">
+      <button class="btn primary" onclick="startAgent()">▶ Run agent</button>
+    </div>
+    <div class="status" id="step1status"></div>
+  </div>
+
+  <!-- Step 2: Agent prepares (simulated) -->
+  <div class="card" id="prepCard" style="display:none">
+    <h2>2. Agent preparing…</h2>
+    <p id="prepLog" style="font-family:monospace;font-size:13px"></p>
+  </div>
+
+  <!-- Step 3: Human approval gate (the Notary core) -->
+  <div class="card approval" id="approvalCard" style="display:none">
+    <h2>⚠️ Irreversible action — requires your approval</h2>
+    <p>The agent wants to execute the following. This <b>cannot be undone</b>.</p>
+    <div class="amount" id="approvalAmount">$1,200.00</div>
+    <div class="detail" id="approvalDetail"></div>
+    <div class="warn" id="approvalWarn">This action is irreversible. Review carefully before approving.</div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn primary" id="approveBtn" onclick="approve()">✅ Approve &amp; Sign</button>
+      <button class="btn ghost" onclick="reject()">✖ Reject</button>
+    </div>
+    <div class="status" id="approvalStatus"></div>
+  </div>
+
+  <!-- Step 4: Audit log -->
+  <div class="card">
+    <h2>Audit log</h2>
+    <p>Every irreversible action is recorded: who, what, when, and the approval hash.</p>
+    <div id="audit">— no actions yet —</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Notary — Human Approval for Irreversible Agent Actions
+   Uses WebMCP Declarative API: the form below is exposed to the
+   agent as a tool. When the agent invokes it, the browser focuses
+   the form and fills it; the HUMAN must press Submit to approve.
+   This is the "human stays in control" trust layer.
+   ============================================================ */
+
+const auditEl = document.getElementById('audit');
+const auditLog = [];
+
+function logAudit(entry) {
+  auditLog.push(entry);
+  auditEl.textContent = auditLog.map(e =>
+    `[${e.ts}] ${e.who} | ${e.action} | ${e.detail}${e.hash ? ' | hash:'+e.hash : ''}`
+  ).join('\n');
+}
+
+function setStatus(id, text) {
+  document.getElementById(id).textContent = text;
+}
+
+/* ---- Step 1: user instruction ---- */
+function startAgent() {
+  const inst = document.getElementById('instruction').value;
+  setStatus('step1status', 'Agent started…');
+  document.getElementById('prepCard').style.display = 'block';
+  const prepLog = document.getElementById('prepLog');
+  prepLog.textContent = '';
+  const steps = [
+    '→ fetching invoice #2041…',
+    '→ verifying amount: $1,200.00 ✓',
+    '→ validating payee: Acme Corp ✓',
+    '→ preparing payment form…',
+    '→ ⚠️ irreversible step reached — pausing for human approval'
+  ];
+  let i = 0;
+  const timer = setInterval(() => {
+    if (i < steps.length) {
+      prepLog.textContent += steps[i] + '\n';
+      i++;
+    } else {
+      clearInterval(timer);
+      // Show the approval gate
+      document.getElementById('approvalCard').style.display = 'block';
+      document.getElementById('approvalDetail').innerHTML =
+        'Payee: <b>Acme Corp</b><br/>Invoice: <b>#2041</b><br/>Amount: <b>$1,200.00</b><br/>Method: <b>Bank transfer</b>';
+      setStatus('approvalStatus', '⏳ Awaiting human approval…');
+      logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'request_approval', detail: 'payment $1,200 to Acme Corp' });
+    }
+  }, 600);
+}
+
+/* ---- Step 3: human approval ---- */
+function approve() {
+  const btn = document.getElementById('approveBtn');
+  btn.disabled = true;
+  setStatus('approvalStatus', '✅ Approved & signed. Executing…');
+  logAudit({ ts: new Date().toISOString(), who: 'HUMAN', action: 'APPROVE', detail: 'payment $1,200 to Acme Corp', hash: 'sha256:'+Math.random().toString(16).slice(2,18) });
+  setTimeout(() => {
+    logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'EXECUTE', detail: 'payment $1,200 to Acme Corp — completed' });
+    setStatus('approvalStatus', '✅ Payment executed. Recorded in audit log.');
+    document.getElementById('approvalCard').style.display = 'none';
+    document.getElementById('prepCard').style.display = 'none';
+    setStatus('step1status', '✅ Done. See audit log below.');
+  }, 800);
+}
+
+function reject() {
+  setStatus('approvalStatus', '✖ Rejected by human. Action cancelled.');
+  logAudit({ ts: new Date().toISOString(), who: 'HUMAN', action: 'REJECT', detail: 'payment $1,200 to Acme Corp' });
+  document.getElementById('approvalCard').style.display = 'none';
+  document.getElementById('prepCard').style.display = 'none';
+  setStatus('step1status', '✖ Cancelled. Nothing was executed.');
+}
+
+/* ============================================================
+   WebMCP Declarative API — expose the approval as a tool.
+   The form below (toolname="notary.approve") is what the agent
+   calls. The browser fills it; the human presses Submit.
+   ============================================================ */
+</script>
+
+<!-- WebMCP Declarative API: this form is the agent-facing tool.
+     The agent fills it via toolname; the human must submit. -->
+<form
+  id="notaryForm"
+  toolname="notary.approve"
+  tooldescription="Approve an irreversible payment action. Requires human confirmation."
+  toolparamamount="The amount to pay, e.g. 1200.00"
+  toolparampayee="The payee name"
+  style="display:none"
+>
+  <input name="amount" id="fAmount" />
+  <input name="payee" id="fPayee" />
+  <button type="submit">Approve</button>
+</form>
+
+<script>
+/* When the agent invokes notary.approve via WebMCP, the browser
+   fills this form and the human confirms. We capture the submit. */
+const form = document.getElementById('notaryForm');
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const amount = document.getElementById('fAmount').value;
+  const payee = document.getElementById('fPayee').value;
+  document.getElementById('approvalAmount').textContent = '$' + amount;
+  document.getElementById('approvalDetail').innerHTML = 'Payee: <b>'+payee+'</b>';
+  document.getElementById('approvalCard').style.display = 'block';
+  setStatus('approvalStatus', '⏳ Agent invoked approval — human review required…');
+  logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'invoke_notary.approve', detail: amount+' to '+payee });
+});
+</script>
+</body>
+</html>
