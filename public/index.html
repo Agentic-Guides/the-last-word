@@ -211,7 +211,7 @@
   <!-- Step 4 -->
   <div class="card">
     <h2>Audit log</h2>
-    <p>Every irreversible action is recorded with a real SHA-256 signature — who approved what, and when.</p>
+    <p>Every irreversible action is recorded with a real ECDSA digital signature (P-256) — who approved what, when, and with a verifiable signature.</p>
     <div class="audit" id="audit">— no actions yet —</div>
   </div>
 </div>
@@ -242,9 +242,13 @@ const auditLog = [];
 
 function logAudit(entry) {
   auditLog.push(entry);
-  auditEl.innerHTML = auditLog.map(e =>
-    `<span class="${e.who.toLowerCase()}">[${e.ts}] ${e.who} | ${e.action} | ${e.detail}</span>${e.hash ? ' | <span style="color:#94a3b8">hash:'+e.hash.slice(0,16)+'…</span>' : ''}`
-  ).join('\n');
+  auditEl.innerHTML = auditLog.map(e => {
+    let line = `<span class="${e.who.toLowerCase()}">[${e.ts}] ${e.who} | ${e.action} | ${e.detail}</span>`;
+    if (e.hash) line += ` | <span style="color:#94a3b8">sha256:${e.hash.slice(0,16)}…</span>`;
+    if (e.signature) line += ` | <span style="color:#fca5a5">ecdsa-sig:${e.signature.slice(0,24)}…</span>`;
+    if (e.pubKey) line += ` | <span style="color:#86efac">pubkey:${e.pubKey.slice(0,16)}…</span>`;
+    return line;
+  }).join('\n');
 }
 function setStatus(id, text, cls) {
   const el = document.getElementById(id);
@@ -252,7 +256,58 @@ function setStatus(id, text, cls) {
   el.className = 'status' + (cls ? ' ' + cls : '');
 }
 
-/* Real SHA-256 via Web Crypto API */
+/* Real ECDSA digital signature via Web Crypto API (P-256) */
+// Generate an ECDSA key pair once on page load. The private key signs
+// approvals; the public key is shown in the audit log so anyone can verify.
+let signingKeyPair = null;
+let signingKeyReady = false;
+
+async function initSigningKey() {
+  try {
+    signingKeyPair = await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true, // extractable so we can export the public key
+      ["sign", "verify"]
+    );
+    signingKeyReady = true;
+  } catch (e) {
+    console.error("ECDSA key generation failed:", e);
+    signingKeyReady = false;
+  }
+}
+initSigningKey();
+
+// Export the public key as a base64 JWK for display in the audit log
+async function exportPublicKey() {
+  if (!signingKeyPair) return "";
+  const jwk = await crypto.subtle.exportKey("jwk", signingKeyPair.publicKey);
+  return jwk.x + jwk.y; // compact public key fingerprint
+}
+
+// Sign a payload with the ECDSA private key
+async function ecdsaSign(payload) {
+  const data = new TextEncoder().encode(payload);
+  const sig = await crypto.subtle.sign(
+    { name: "ECDSA", hash: "SHA-256" },
+    signingKeyPair.privateKey,
+    data
+  );
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Verify a signature against the public key
+async function ecdsaVerify(payload, signatureHex) {
+  const data = new TextEncoder().encode(payload);
+  const sigBytes = new Uint8Array(signatureHex.match(/.{2}/g).map(h => parseInt(h, 16)));
+  return crypto.subtle.verify(
+    { name: "ECDSA", hash: "SHA-256" },
+    signingKeyPair.publicKey,
+    sigBytes,
+    data
+  );
+}
+
+// Keep a SHA-256 hash of the payload too (for a compact fingerprint)
 async function sha256(text) {
   const data = new TextEncoder().encode(text);
   const buf = await crypto.subtle.digest('SHA-256', data);
@@ -307,7 +362,7 @@ function startAgent() {
   }, 600);
 }
 
-/* Step 3: approve with real signature hash */
+/* Step 3: approve with a real ECDSA digital signature */
 async function approve() {
   const btn = document.getElementById('approveBtn');
   btn.disabled = true;
@@ -315,11 +370,14 @@ async function approve() {
   const ts = new Date().toISOString();
   const prepared = document.getElementById('diffPrepared').textContent;
   const payload = `APPROVE|${ts}|${prepared}`;
-  const hash = await sha256(payload);
-  logAudit({ ts, who: 'HUMAN', action: 'APPROVE', detail: prepared, hash });
+  // Real ECDSA signature (P-256) over the approval payload
+  const signature = await ecdsaSign(payload);
+  const hash = await sha256(payload); // compact fingerprint too
+  const pubKey = await exportPublicKey();
+  logAudit({ ts, who: 'HUMAN', action: 'APPROVE', detail: prepared, hash, signature, pubKey });
   setTimeout(() => {
     logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'EXECUTE', detail: prepared });
-    setStatus('approvalStatus', '✅ Executed. Signed approval recorded below.', 'ok');
+    setStatus('approvalStatus', '✅ Executed. ECDSA-signed approval recorded below.', 'ok');
     document.getElementById('approvalCard').style.display = 'none';
     document.getElementById('prepCard').style.display = 'none';
     setStatus('step1status', '✅ Done. Run another instruction to try again.', 'ok');

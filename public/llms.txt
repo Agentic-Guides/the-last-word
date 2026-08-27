@@ -30,8 +30,8 @@ Approve an irreversible payment action. Requires human confirmation.
 **Flow:**
 1. Agent fills the `notary.approve` form with `amount` and `payee`.
 2. The human reviews the prepared action (amount, payee, irreversibility warning).
-3. The human clicks **Approve & Sign** — a real SHA-256 signature is recorded.
-4. The audit log records who approved what, when, with the signature hash.
+3. The human clicks **Approve & Sign** — a real ECDSA digital signature (P-256) is generated over the approval payload.
+4. The audit log records who approved what, when, with the signature and public key.
 
 ## Key URLs
 
