@@ -1,4 +1,8 @@
 node_modules/
 login-url.txt
+gh-login-ag.md
+gh-refresh.txt
 public/
+video/
+*.mp3
 .DS_Store
