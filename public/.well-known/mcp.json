@@ -1,0 +1,18 @@
+{
+  "name": "the-last-word",
+  "description": "The Last Word — human approval gate for irreversible AI agent actions. Exposes the notary.approve tool for human-in-the-loop approval.",
+  "tools": [
+    {
+      "name": "notary.approve",
+      "description": "Approve an irreversible payment action. Requires human confirmation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "amount": { "type": "string", "description": "The amount to pay, e.g. 1200.00" },
+          "payee": { "type": "string", "description": "The payee name" }
+        },
+        "required": ["amount", "payee"]
+      }
+    }
+  ]
+}

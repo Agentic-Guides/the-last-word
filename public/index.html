@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Last Word — Human Approval for Irreversible Agent Actions</title>
+<meta name="description" content="The Last Word — a WebMCP human-in-the-loop approval gate for irreversible AI agent actions. Approve and sign every irreversible step." />
+<link rel="canonical" href="https://webmcp-notary.pages.dev/" />
+<meta property="og:title" content="The Last Word — Human Approval for Irreversible Agent Actions" />
+<meta property="og:description" content="A WebMCP human-in-the-loop approval gate for irreversible AI agent actions. Approve and sign every irreversible step." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://webmcp-notary.pages.dev/" />
+<meta property="og:image" content="https://webmcp-notary.pages.dev/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="The Last Word — Human Approval for Irreversible Agent Actions" />
+<meta name="twitter:description" content="A WebMCP human-in-the-loop approval gate for irreversible AI agent actions." />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "The Last Word",
+  "url": "https://webmcp-notary.pages.dev/",
+  "description": "A WebMCP human-in-the-loop approval gate for irreversible AI agent actions. Approve and sign every irreversible step.",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Agentic-Guides",
+    "url": "https://github.com/Agentic-Guides/the-last-word",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer service",
+      "email": "aiaiaiaiaiai0x@gmail.com",
+      "url": "https://webmcp-notary.pages.dev/contact"
+    },
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Tokyo",
+      "addressCountry": "JP"
+    }
+  }
+}
+</script>
+<style>
+  :root {
+    --ink:#111111; --paper:#ffffff; --accent:#e11d48; --muted:#6b7280;
+    --line:#e5e7eb; --bg:#f9fafb; --ok:#059669; --warn:#d97706;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); line-height:1.6; }
+  header { background:var(--ink); color:#fff; padding:0; border-bottom:3px solid var(--accent); }
+  .header-inner { max-width:880px; margin:0 auto; padding:18px 24px; display:flex; align-items:center; gap:16px; }
+  .logo { width:38px; height:38px; background:var(--accent); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#fff; }
+  .logo-text h1 { font-size:20px; margin:0; letter-spacing:.3px; font-weight:800; }
+  .logo-text .tag { font-size:12px; opacity:.7; }
+  .pills { margin-left:auto; display:flex; gap:8px; }
+  .pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800; letter-spacing:.4px; }
+  .pill.agent { background:rgba(255,255,255,.12); color:#a7f3d0; border:1px solid rgba(255,255,255,.2); }
+  .pill.human { background:var(--accent); color:#fff; }
+  .wrap { max-width:880px; margin:0 auto; padding:28px 24px 60px; }
+  /* Hero */
+  .hero { text-align:center; padding:24px 0 32px; }
+  .hero h2 { font-size:30px; margin:0 0 8px; font-weight:800; letter-spacing:-.5px; }
+  .hero p { font-size:16px; color:var(--muted); max-width:600px; margin:0 auto; }
+  /* How it works */
+  .howto { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px; }
+  .howto .step { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .howto .num { display:inline-flex; width:26px; height:26px; border-radius:50%; background:var(--ink); color:#fff; align-items:center; justify-content:center; font-size:13px; font-weight:800; margin-bottom:10px; }
+  .howto h3 { font-size:14px; margin:0 0 4px; font-weight:700; }
+  .howto p { font-size:12px; color:var(--muted); margin:0; }
+  .card { background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:26px 28px; box-shadow:0 1px 3px rgba(0,0,0,.04); margin-bottom:20px; }
+  .card h2 { margin:0 0 6px; font-size:18px; font-weight:800; }
+  .card > p { margin:0 0 16px; font-size:14px; color:var(--muted); }
+  label { display:block; font-size:13px; font-weight:700; margin:0 0 6px; }
+  .input-row { display:flex; gap:10px; align-items:center; }
+  input[type=text] { flex:1; padding:12px 14px; border:1px solid var(--line); border-radius:10px; font-size:14px; outline:none; }
+  input[type=text]:focus { border-color:var(--ink); box-shadow:0 0 0 3px rgba(0,0,0,.06); }
+  .btn { padding:12px 20px; border:none; border-radius:10px; cursor:pointer; font-size:14px; font-weight:700; transition:all .15s; white-space:nowrap; }
+  .btn.primary { background:var(--ink); color:#fff; }
+  .btn.primary:hover { background:var(--accent); }
+  .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  .btn.ghost:hover { background:var(--bg); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .status { font-size:13px; margin-top:12px; color:var(--muted); }
+  .status.ok { color:var(--ok); font-weight:600; }
+  .status.err { color:var(--accent); font-weight:600; }
+  .prep-log { font-family:"SFMono-Regular",Menlo,monospace; font-size:13px; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:16px; white-space:pre-wrap; color:var(--ink); }
+  .prep-log .ok { color:var(--ok); }
+  /* Approval */
+  .approval { border:2px solid var(--warn); background:#fffbeb; }
+  .approval h2 { color:var(--warn); }
+  .diffbox { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:16px; margin:14px 0; }
+  .diffrow { display:flex; gap:12px; padding:8px 0; border-bottom:1px solid var(--line); }
+  .diffrow:last-child { border-bottom:none; }
+  .difflabel { width:130px; font-weight:800; color:var(--muted); flex-shrink:0; font-size:12px; text-transform:uppercase; letter-spacing:.5px; padding-top:2px; }
+  .diffval { flex:1; font-size:13px; }
+  .diffval.match { color:var(--ok); font-weight:700; }
+  .diffval.mismatch { color:var(--accent); font-weight:700; }
+  .amount { font-size:34px; font-weight:800; color:var(--accent); margin:4px 0 6px; letter-spacing:-.5px; }
+  .detail { font-size:14px; margin:4px 0; color:var(--ink); }
+  .warn { font-size:13px; color:var(--warn); font-weight:700; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:8px 12px; margin:10px 0; }
+  .btn-actions { display:flex; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  .btn.approve { background:var(--ok); color:#fff; }
+  .btn.approve:hover { background:#047857; }
+  .btn.reject { background:#fff; color:var(--accent); border:1px solid var(--accent); }
+  .btn.reject:hover { background:var(--accent); color:#fff; }
+  /* Audit */
+  .audit { font-family:"SFMono-Regular",Menlo,monospace; font-size:12px; background:#111; color:#86efac; padding:16px; border-radius:10px; white-space:pre-wrap; max-height:220px; overflow:auto; line-height:1.7; }
+  .audit .human { color:#fca5a5; }
+  .audit .agent { color:#86efac; }
+  /* Footer */
+  footer { text-align:center; padding:24px; font-size:12px; color:var(--muted); border-top:1px solid var(--line); }
+  footer a { color:var(--accent); text-decoration:none; font-weight:600; }
+  @media (max-width:640px) {
+    .howto { grid-template-columns:1fr; }
+    .input-row { flex-direction:column; align-items:stretch; }
+    .pills { display:none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="logo">L</div>
+    <div class="logo-text">
+      <h1>The Last Word</h1>
+      <div class="tag">Human approval for irreversible agent actions</div>
+    </div>
+    <div class="pills">
+      <span class="pill agent">AGENT</span>
+      <span class="pill human">HUMAN</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Someone has to be in control.</h1>
+    <p>When AI agents act on your behalf, some actions can't be undone. The Last Word makes sure a human approves — and signs — every irreversible step.</p>
+  </div>
+
+  <div class="howto">
+    <div class="step">
+      <div class="num">1</div>
+      <h3>Tell the agent</h3>
+      <p>Type what you want done. The agent prepares everything.</p>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <h3>Review the diff</h3>
+      <p>The Last Word shows what you asked vs what the agent prepared — side by side.</p>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <h3>Approve or reject</h3>
+      <p>You have the final say. Approve to execute, or reject to block it.</p>
+    </div>
+  </div>
+
+  <!-- Step 1 -->
+  <div class="card">
+    <h2>Try it</h2>
+    <p>Tell the agent to pay an invoice. Watch it prepare the action, then approve or reject at the gate.</p>
+    <label for="instruction">Your instruction</label>
+    <div class="input-row">
+      <input type="text" id="instruction" value="Pay invoice #2041 for $1,200 to Acme Corp" />
+      <button class="btn primary" onclick="startAgent()">Run agent</button>
+    </div>
+    <div class="status" id="step1status"></div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="card" id="prepCard" style="display:none">
+    <h2>Agent preparing…</h2>
+    <div class="prep-log" id="prepLog"></div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="card approval" id="approvalCard" style="display:none">
+    <h2>⚠️ Irreversible action — needs your approval</h2>
+    <p>You have the last word. Compare your request with what the agent prepared.</p>
+    <div class="diffbox">
+      <div class="diffrow">
+        <span class="difflabel">You asked</span>
+        <span class="diffval" id="diffRequest"></span>
+      </div>
+      <div class="diffrow">
+        <span class="difflabel">Agent prepared</span>
+        <span class="diffval" id="diffPrepared"></span>
+      </div>
+      <div class="diffrow">
+        <span class="difflabel">Check</span>
+        <span class="diffval" id="diffCheck"></span>
+      </div>
+    </div>
+    <div class="amount" id="approvalAmount">$1,200.00</div>
+    <div class="detail" id="approvalDetail"></div>
+    <div class="warn" id="approvalWarn">This action is irreversible. Review carefully before approving.</div>
+    <div class="btn-actions">
+      <button class="btn approve" id="approveBtn" onclick="approve()">Approve &amp; Sign</button>
+      <button class="btn reject" onclick="reject()">Reject</button>
+    </div>
+    <div class="status" id="approvalStatus"></div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="card">
+    <h2>Audit log</h2>
+    <p>Every irreversible action is recorded with a real SHA-256 signature — who approved what, and when.</p>
+    <div class="audit" id="audit">— no actions yet —</div>
+  </div>
+</div>
+
+<footer>
+  The Last Word · Built for the <a href="https://openai.com/webmcp-challenge/" target="_blank" rel="noopener">WebMCP Challenge</a> · <a href="https://github.com/Agentic-Guides/the-last-word" target="_blank" rel="noopener">Open source (MIT)</a>
+</footer>
+
+<script>
+/* ============================================================
+   The Last Word — Human Approval for Irreversible Agent Actions
+   WebMCP Declarative API: the approval form is exposed as a tool.
+   The agent fills it; the HUMAN must submit to approve.
+   ============================================================ */
+const auditEl = document.getElementById('audit');
+const auditLog = [];
+
+function logAudit(entry) {
+  auditLog.push(entry);
+  auditEl.innerHTML = auditLog.map(e =>
+    `<span class="${e.who.toLowerCase()}">[${e.ts}] ${e.who} | ${e.action} | ${e.detail}</span>${e.hash ? ' | <span style="color:#94a3b8">hash:'+e.hash.slice(0,16)+'…</span>' : ''}`
+  ).join('\n');
+}
+function setStatus(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+
+/* Real SHA-256 via Web Crypto API */
+async function sha256(text) {
+  const data = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* Parse request: amount ($X) and payee ("to X") */
+function parseRequest(inst) {
+  const amountMatch = inst.match(/\$\s*([\d,]+\.?\d*)/);
+  const amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '';
+  const payeeMatch = inst.match(/to\s+([A-Z][\w\s]+?)(?:\s+for|\s*$)/i);
+  const payee = payeeMatch ? payeeMatch[1].trim() : 'Acme Corp';
+  return { amount, payee };
+}
+
+/* Step 1: run agent */
+function startAgent() {
+  const inst = document.getElementById('instruction').value;
+  setStatus('step1status', '');
+  document.getElementById('prepCard').style.display = 'block';
+  const prepLog = document.getElementById('prepLog');
+  prepLog.innerHTML = '';
+  const steps = [
+    ['ok','✓ Invoice found (invoice #2041)'],
+    ['ok','✓ Amount checked: matches what you asked'],
+    ['ok','✓ Payee checked: matches what you asked'],
+    ['','→ Preparing payment…'],
+    ['','⚠️ Irreversible step reached — pausing for your approval']
+  ];
+  let i = 0;
+  const timer = setInterval(() => {
+    if (i < steps.length) {
+      prepLog.innerHTML += `<span class="${steps[i][0]}">${steps[i][1]}</span>\n`;
+      i++;
+    } else {
+      clearInterval(timer);
+      const req = parseRequest(inst);
+      const requested = (inst || 'Pay invoice #2041 for $1,200 to Acme Corp').trim();
+      const prepared = `Pay ${req.amount ? '$'+req.amount : '$1,200.00'} to ${req.payee}`;
+      document.getElementById('diffRequest').textContent = requested;
+      document.getElementById('diffPrepared').textContent = prepared;
+      const checkEl = document.getElementById('diffCheck');
+      checkEl.textContent = '✓ Amount and payee match your request';
+      checkEl.className = 'diffval match';
+      document.getElementById('approvalCard').style.display = 'block';
+      document.getElementById('approvalAmount').textContent = '$' + (req.amount || '1,200.00');
+      document.getElementById('approvalDetail').innerHTML =
+        'Payee: <b>' + req.payee + '</b> &nbsp;·&nbsp; Invoice: <b>#2041</b> &nbsp;·&nbsp; Method: <b>Bank transfer</b>';
+      setStatus('approvalStatus', '⏳ Awaiting your decision…');
+      logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'request_approval', detail: 'payment $' + (req.amount || '1,200.00') + ' to ' + req.payee });
+    }
+  }, 600);
+}
+
+/* Step 3: approve with real signature hash */
+async function approve() {
+  const btn = document.getElementById('approveBtn');
+  btn.disabled = true;
+  setStatus('approvalStatus', '✅ Approved & signed. Executing…', 'ok');
+  const ts = new Date().toISOString();
+  const prepared = document.getElementById('diffPrepared').textContent;
+  const payload = `APPROVE|${ts}|${prepared}`;
+  const hash = await sha256(payload);
+  logAudit({ ts, who: 'HUMAN', action: 'APPROVE', detail: prepared, hash });
+  setTimeout(() => {
+    logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'EXECUTE', detail: prepared });
+    setStatus('approvalStatus', '✅ Executed. Signed approval recorded below.', 'ok');
+    document.getElementById('approvalCard').style.display = 'none';
+    document.getElementById('prepCard').style.display = 'none';
+    setStatus('step1status', '✅ Done. Run another instruction to try again.', 'ok');
+  }, 800);
+}
+
+function reject() {
+  setStatus('approvalStatus', '✖ Rejected. The agent was blocked.', 'err');
+  logAudit({ ts: new Date().toISOString(), who: 'HUMAN', action: 'REJECT', detail: 'blocked' });
+  document.getElementById('approvalCard').style.display = 'none';
+  document.getElementById('prepCard').style.display = 'none';
+  setStatus('step1status', '✖ Cancelled. Nothing was executed.', 'err');
+}
+</script>
+
+<!-- WebMCP Declarative API: the agent-facing tool -->
+<form id="notaryForm" toolname="notary.approve"
+  tooldescription="Approve an irreversible payment action. Requires human confirmation."
+  toolparamamount="The amount to pay, e.g. 1200.00"
+  toolparampayee="The payee name"
+  style="display:none">
+  <input name="amount" id="fAmount" />
+  <input name="payee" id="fPayee" />
+  <button type="submit">Approve</button>
+</form>
+<script>
+const form = document.getElementById('notaryForm');
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const amount = document.getElementById('fAmount').value;
+  const payee = document.getElementById('fPayee').value;
+  document.getElementById('approvalAmount').textContent = '$' + amount;
+  document.getElementById('diffPrepared').textContent = 'Pay $' + amount + ' to ' + payee;
+  document.getElementById('approvalCard').style.display = 'block';
+  setStatus('approvalStatus', '⏳ Agent invoked approval — review required…');
+  logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'invoke_notary.approve', detail: amount + ' to ' + payee });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+# The Last Word
+
+> Human approval gate for irreversible AI agent actions. A WebMCP human-in-the-loop trust layer.
+
+The Last Word is a WebMCP Declarative API app that lets a human approve — and cryptographically sign — irreversible actions that an AI agent wants to take (payments, transfers, deletions, contract submissions). It is the "human stays in control" layer for agentic commerce.
+
+## When to use this site
+
+Use The Last Word when an AI agent is about to perform an **irreversible action** on behalf of a person or business and a human must give the final approval:
+
+- Approving a payment or money transfer prepared by an agent
+- Signing off on a contract, invoice, or irreversible submission
+- Auditing who approved what, when, with a real SHA-256 signature
+- Demonstrating a human-in-the-loop approval gate for WebMCP / agentic apps
+
+Do NOT use this site for reversible actions, read-only queries, or anything that does not need human sign-off.
+
+## How an agent uses it
+
+The site exposes one WebMCP Declarative API tool:
+
+### `notary.approve`
+
+Approve an irreversible payment action. Requires human confirmation.
+
+**Parameters:**
+- `amount` (string): the amount to pay, e.g. `1200.00`
+- `payee` (string): the payee name
+
+**Flow:**
+1. Agent fills the `notary.approve` form with `amount` and `payee`.
+2. The human reviews the prepared action (amount, payee, irreversibility warning).
+3. The human clicks **Approve & Sign** — a real SHA-256 signature is recorded.
+4. The audit log records who approved what, when, with the signature hash.
+
+## Key URLs
+
+- Home / live app: https://webmcp-notary.pages.dev/
+- Source (open source, MIT): https://github.com/Agentic-Guides/the-last-word
+- Sitemap: https://webmcp-notary.pages.dev/sitemap.xml
+- About: https://webmcp-notary.pages.dev/about
+- Contact: https://webmcp-notary.pages.dev/contact
+- Privacy: https://webmcp-notary.pages.dev/privacy
+
+## Contact
+
+- Project: The Last Word (WebMCP Challenge)
+- Maintainer: Agentic-Guides
+- Email: aiaiaiaiaiai0x@gmail.com

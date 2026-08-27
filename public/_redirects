@@ -1,0 +1,2 @@
+# Return a real 404 for nonexistent paths (prevents SPA soft-404)
+/* /404.html 404

@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+
+# Allow AI agents and crawlers to read the site and its agent-facing files
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://webmcp-notary.pages.dev/sitemap.xml
