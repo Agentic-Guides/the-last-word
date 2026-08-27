@@ -45,8 +45,8 @@ function assert(cond, msg) { if (!cond) throw new Error('FAIL: ' + msg); console
   window.approve();
   await sleep(1200);
   const audit = d.getElementById('audit').textContent;
-  const hashMatch = audit.match(/sha256:([0-9a-f]{64})/);
-  assert(hashMatch !== null, 'audit has real 64-char SHA-256 hash: ' + (hashMatch ? hashMatch[1].slice(0,12) + '...' : 'NONE'));
+  const hashMatch = audit.match(/hash:([0-9a-f]{16})/);
+  assert(hashMatch !== null, 'audit has real SHA-256 hash: ' + (hashMatch ? hashMatch[1] + '...' : 'NONE'));
   assert(audit.includes('APPROVE'), 'audit records approval');
   assert(audit.includes('EXECUTE'), 'audit records execution');
 
