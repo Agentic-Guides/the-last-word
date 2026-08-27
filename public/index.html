@@ -211,7 +211,7 @@
   <!-- Step 4 -->
   <div class="card">
     <h2>Audit log</h2>
-    <p>Every irreversible action is recorded with a real ECDSA digital signature (P-256) — who approved what, when, and with a verifiable signature.</p>
+    <p>Every irreversible action is recorded with a <b>session-scoped ECDSA digital signature</b> (P-256) — who approved what, when. The signing key is generated per browser session and is a <b>demonstration</b> of a human approval gate, not a durable certificate.</p>
     <div class="audit" id="audit">— no actions yet —</div>
   </div>
 </div>
@@ -240,10 +240,16 @@
 const auditEl = document.getElementById('audit');
 const auditLog = [];
 
+/* HTML escape to prevent XSS in audit log */
+function escapeHtml(s) {
+  if (typeof s !== 'string') return String(s);
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function logAudit(entry) {
   auditLog.push(entry);
   auditEl.innerHTML = auditLog.map(e => {
-    let line = `<span class="${e.who.toLowerCase()}">[${e.ts}] ${e.who} | ${e.action} | ${e.detail}</span>`;
+    let line = `<span class="${e.who.toLowerCase()}">[${e.ts}] ${e.who} | ${e.action} | ${escapeHtml(e.detail)}</span>`;
     if (e.hash) line += ` | <span style="color:#94a3b8">sha256:${e.hash.slice(0,16)}…</span>`;
     if (e.signature) line += ` | <span style="color:#fca5a5">ecdsa-sig:${e.signature.slice(0,24)}…</span>`;
     if (e.pubKey) line += ` | <span style="color:#86efac">pubkey:${e.pubKey.slice(0,16)}…</span>`;
@@ -256,9 +262,11 @@ function setStatus(id, text, cls) {
   el.className = 'status' + (cls ? ' ' + cls : '');
 }
 
-/* Real ECDSA digital signature via Web Crypto API (P-256) */
-// Generate an ECDSA key pair once on page load. The private key signs
-// approvals; the public key is shown in the audit log so anyone can verify.
+/* Session-scoped ECDSA digital signature via Web Crypto API (P-256) */
+// Generate an ECDSA key pair per browser session. The private key signs
+// approvals; a short public-key fingerprint is shown in the audit log.
+// NOTE: the key is ephemeral (regenerated on reload) — this is a
+// demonstration of a human-approval gate, not a durable notarization.
 let signingKeyPair = null;
 let signingKeyReady = false;
 
@@ -266,7 +274,7 @@ async function initSigningKey() {
   try {
     signingKeyPair = await crypto.subtle.generateKey(
       { name: "ECDSA", namedCurve: "P-256" },
-      true, // extractable so we can export the public key
+      true, // extractable so we can export the public key fingerprint
       ["sign", "verify"]
     );
     signingKeyReady = true;
@@ -277,11 +285,11 @@ async function initSigningKey() {
 }
 initSigningKey();
 
-// Export the public key as a base64 JWK for display in the audit log
+// Export a short public-key fingerprint (display only, not a standard JWK)
 async function exportPublicKey() {
   if (!signingKeyPair) return "";
   const jwk = await crypto.subtle.exportKey("jwk", signingKeyPair.publicKey);
-  return jwk.x + jwk.y; // compact public key fingerprint
+  return (jwk.x + jwk.y).slice(0, 32);
 }
 
 // Sign a payload with the ECDSA private key
@@ -293,18 +301,6 @@ async function ecdsaSign(payload) {
     data
   );
   return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Verify a signature against the public key
-async function ecdsaVerify(payload, signatureHex) {
-  const data = new TextEncoder().encode(payload);
-  const sigBytes = new Uint8Array(signatureHex.match(/.{2}/g).map(h => parseInt(h, 16)));
-  return crypto.subtle.verify(
-    { name: "ECDSA", hash: "SHA-256" },
-    signingKeyPair.publicKey,
-    sigBytes,
-    data
-  );
 }
 
 // Keep a SHA-256 hash of the payload too (for a compact fingerprint)
@@ -362,31 +358,56 @@ function startAgent() {
   }, 600);
 }
 
-/* Step 3: approve with a real ECDSA digital signature */
+/* Step 3: approve with a session-scoped ECDSA digital signature */
 async function approve() {
   const btn = document.getElementById('approveBtn');
+  // Guard against race: if ECDSA key not yet generated, wait briefly
+  if (!signingKeyReady) {
+    setStatus('approvalStatus', '⏳ Preparing signature key… retrying', 'err');
+    btn.disabled = false; // allow retry
+    return;
+  }
   btn.disabled = true;
   setStatus('approvalStatus', '✅ Approved & signed. Executing…', 'ok');
   const ts = new Date().toISOString();
   const prepared = document.getElementById('diffPrepared').textContent;
   const payload = `APPROVE|${ts}|${prepared}`;
   // Real ECDSA signature (P-256) over the approval payload
-  const signature = await ecdsaSign(payload);
-  const hash = await sha256(payload); // compact fingerprint too
-  const pubKey = await exportPublicKey();
+  let signature, hash, pubKey;
+  try {
+    signature = await ecdsaSign(payload);
+    hash = await sha256(payload); // compact fingerprint too
+    pubKey = await exportPublicKey();
+  } catch (e) {
+    console.error('Signing failed:', e);
+    setStatus('approvalStatus', '❌ Signature failed. Try again.', 'err');
+    btn.disabled = false; // re-enable on failure
+    return;
+  }
   logAudit({ ts, who: 'HUMAN', action: 'APPROVE', detail: prepared, hash, signature, pubKey });
+  // Resolve any held agent tool call (WebMCP respondWith) with the approval result
+  if (window.__resolveNotary) {
+    window.__resolveNotary({ approved: true, action: prepared, ts, signature: signature.slice(0, 32) });
+    window.__resolveNotary = null;
+  }
   setTimeout(() => {
     logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'EXECUTE', detail: prepared });
     setStatus('approvalStatus', '✅ Executed. ECDSA-signed approval recorded below.', 'ok');
     document.getElementById('approvalCard').style.display = 'none';
     document.getElementById('prepCard').style.display = 'none';
     setStatus('step1status', '✅ Done. Run another instruction to try again.', 'ok');
+    btn.disabled = false; // re-enable for next try
   }, 800);
 }
 
 function reject() {
   setStatus('approvalStatus', '✖ Rejected. The agent was blocked.', 'err');
   logAudit({ ts: new Date().toISOString(), who: 'HUMAN', action: 'REJECT', detail: 'blocked' });
+  // Resolve any held agent tool call with the rejection result
+  if (window.__resolveNotary) {
+    window.__resolveNotary({ approved: false, action: 'blocked', ts: new Date().toISOString() });
+    window.__resolveNotary = null;
+  }
   document.getElementById('approvalCard').style.display = 'none';
   document.getElementById('prepCard').style.display = 'none';
   setStatus('step1status', '✖ Cancelled. Nothing was executed.', 'err');
@@ -396,24 +417,40 @@ function reject() {
 <!-- WebMCP Declarative API: the agent-facing tool -->
 <form id="notaryForm" toolname="notary.approve"
   tooldescription="Approve an irreversible payment action. Requires human confirmation."
-  toolparamamount="The amount to pay, e.g. 1200.00"
-  toolparampayee="The payee name"
   style="display:none">
-  <input name="amount" id="fAmount" />
-  <input name="payee" id="fPayee" />
+  <input name="amount" id="fAmount" toolparamtitle="Amount" toolparamdescription="The amount to pay, e.g. 1200.00" />
+  <input name="payee" id="fPayee" toolparamtitle="Payee" toolparamdescription="The payee name" />
   <button type="submit">Approve</button>
 </form>
 <script>
 const form = document.getElementById('notaryForm');
+// When an agent invokes the tool, we hold the call open via respondWith()
+// until the HUMAN resolves it (approve or reject). This is the human-in-
+// the-loop gate made first-class in WebMCP.
+let pendingAgentResponse = null; // resolve function for the held tool call
+
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const amount = document.getElementById('fAmount').value;
   const payee = document.getElementById('fPayee').value;
+  const prepared = 'Pay $' + amount + ' to ' + payee;
   document.getElementById('approvalAmount').textContent = '$' + amount;
-  document.getElementById('diffPrepared').textContent = 'Pay $' + amount + ' to ' + payee;
+  document.getElementById('diffPrepared').textContent = prepared;
   document.getElementById('approvalCard').style.display = 'block';
   setStatus('approvalStatus', '⏳ Agent invoked approval — review required…');
   logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'invoke_notary.approve', detail: amount + ' to ' + payee });
+
+  if (e.agentInvoked && typeof e.respondWith === 'function') {
+    // Hold the agent's tool call open until the human decides.
+    pendingAgentResponse = new Promise((resolve) => {
+      // store resolution on window so approve()/reject() can settle it
+      window.__resolveNotary = resolve;
+    });
+    e.respondWith(pendingAgentResponse);
+  } else {
+    pendingAgentResponse = null;
+    window.__resolveNotary = null;
+  }
 });
 </script>
 </body>

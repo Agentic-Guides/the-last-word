@@ -10,7 +10,7 @@ Use The Last Word when an AI agent is about to perform an **irreversible action*
 
 - Approving a payment or money transfer prepared by an agent
 - Signing off on a contract, invoice, or irreversible submission
-- Auditing who approved what, when, with a real SHA-256 signature
+- Auditing who approved what, when, with a session-scoped ECDSA signature and SHA-256 fingerprint
 - Demonstrating a human-in-the-loop approval gate for WebMCP / agentic apps
 
 Do NOT use this site for reversible actions, read-only queries, or anything that does not need human sign-off.

@@ -17,7 +17,7 @@
   <div class="wrap">
     <h1>About The Last Word</h1>
     <p>The Last Word is a WebMCP Declarative API app that gives humans the final say over irreversible actions taken by AI agents. When an agent prepares an action that cannot be undone — a payment, a transfer, a contract submission — The Last Word pauses the flow and requires a human to review and sign off before anything executes.</p>
-    <p>It is built for the WebMCP Challenge and demonstrates the "human stays in control" principle for agentic commerce. Every approved action is recorded in an audit log with a real SHA-256 signature, so there is a verifiable record of who approved what, and when.</p>
+    <p>It is built for the WebMCP Challenge and demonstrates the "human stays in control" principle for agentic commerce. Every approved action is recorded in an audit log with a session-scoped ECDSA digital signature (P-256) and a SHA-256 fingerprint, so there is a verifiable record of who approved what, and when.</p>
     <h2>Why it matters</h2>
     <p>As AI agents become active participants in the economy, they need to pay, transfer, and act on behalf of people and businesses. But some actions are irreversible. The Last Word ensures that a human — not the agent — has the final word on those actions. It is the trust layer between autonomous software and the people it serves.</p>
     <h2>Open source</h2>

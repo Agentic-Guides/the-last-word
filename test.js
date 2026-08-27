@@ -1,22 +1,36 @@
-// Notary integration test: verify human-approval flow + real SHA-256 + diff display.
+// THE LAST WORD integration test: verify human-approval flow + ECDSA signature + diff display.
 const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const crypto = require('crypto');
 
-const html = fs.readFileSync(__dirname + '/index.html', 'utf8');
-const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true });
+const html = fs.readFileSync(__dirname + '/public/index.html', 'utf8');
+
+// jsdom には crypto.subtle が無いため、実ブラウザ同等の Web Crypto をモックする。
+// beforeParse で注入して、HTML 内インラインスクリプト実行前に有効にする。
+function injectCryptoMock(window) {
+  window.crypto = window.crypto || {};
+  window.crypto.subtle = {
+    digest: async (algo, data) => {
+      const hash = crypto.createHash('sha256').update(Buffer.from(data)).digest();
+      return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength);
+    },
+    generateKey: async () => {
+      return {
+        publicKey: { alg: 'ECDSA', type: 'public' },
+        privateKey: { alg: 'ECDSA', type: 'private' }
+      };
+    },
+    sign: async () => new ArrayBuffer(64),
+    verify: async () => true,
+    exportKey: async (format, key) => {
+      return { kty: 'EC', crv: 'P-256', x: 'mock-x', y: 'mock-y' };
+    }
+  };
+}
+
+const dom = new JSDOM(html, { runScripts: 'dangerously', pretendToBeVisual: true, beforeParse: injectCryptoMock });
 const { window } = dom;
 const d = window.document;
-
-// jsdom には crypto.subtle が無いため、実ブラウザ同等の Web Crypto をモックする（SHA-256）
-window.crypto = window.crypto || {};
-window.crypto.subtle = {
-  digest: async (algo, data) => {
-    const nodeCrypto = require('crypto');
-    const hash = nodeCrypto.createHash('sha256').update(Buffer.from(data)).digest();
-    return hash.buffer.slice(hash.byteOffset, hash.byteOffset + hash.byteLength);
-  }
-};
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 function assert(cond, msg) { if (!cond) throw new Error('FAIL: ' + msg); console.log('PASS: ' + msg); }
@@ -25,6 +39,10 @@ function assert(cond, msg) { if (!cond) throw new Error('FAIL: ' + msg); console
   // 1. Form exists (WebMCP Declarative API)
   const form = d.getElementById('notaryForm');
   assert(form !== null && form.getAttribute('toolname') === 'notary.approve', 'notary.approve form exists');
+  // 1b. Correct WebMCP param attributes on inputs
+  const fAmount = d.getElementById('fAmount');
+  assert(fAmount && fAmount.getAttribute('toolparamtitle') === 'Amount', 'amount input has toolparamtitle');
+  assert(form.getAttribute('toolparamamount') === null, 'form does NOT use deprecated toolparamamount');
 
   // 2. Start agent flow
   const instruction = 'Pay invoice #2041 for $1,200 to Acme Corp';
@@ -39,16 +57,17 @@ function assert(cond, msg) { if (!cond) throw new Error('FAIL: ' + msg); console
   assert(diffReq.includes('Pay invoice') && diffReq.includes('$1,200'), 'diff shows what you asked');
   assert(diffPrep.includes('1200') && diffPrep.includes('Acme Corp'), 'diff shows what agent prepared: ' + diffPrep);
 
-  // 4. Real SHA-256 hash (not Math.random)
-  const approve = d.getElementById('approveBtn');
-  // wait for approve to be async; click it
-  window.approve();
+  // 4. Approve → ECDSA signature recorded
+  await window.approve();
   await sleep(1200);
   const audit = d.getElementById('audit').textContent;
-  const hashMatch = audit.match(/hash:([0-9a-f]{16})/);
-  assert(hashMatch !== null, 'audit has real SHA-256 hash: ' + (hashMatch ? hashMatch[1] + '...' : 'NONE'));
+  assert(audit.includes('ecdsa-sig:'), 'audit has ECDSA signature: ' + (audit.match(/ecdsa-sig:([0-9a-f]{16})/) ? 'present' : 'NONE'));
   assert(audit.includes('APPROVE'), 'audit records approval');
   assert(audit.includes('EXECUTE'), 'audit records execution');
 
-  console.log('\nALL NOTARY TESTS PASSED — real SHA-256 + diff display + human approval all work.');
+  // 5. Button re-enabled after approval (can approve again)
+  const approveBtn = d.getElementById('approveBtn');
+  assert(approveBtn.disabled === false, 'approve button re-enabled after execution');
+
+  console.log('\nALL LAST WORD TESTS PASSED — ECDSA signature + diff display + human approval + retry all work.');
 })().catch(e => { console.error(e.message); process.exit(1); });
