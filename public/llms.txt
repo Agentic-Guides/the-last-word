@@ -35,12 +35,12 @@ Approve an irreversible payment action. Requires human confirmation.
 
 ## Key URLs
 
-- Home / live app: https://webmcp-notary.pages.dev/
+- Home / live app: https://the-last-word.pages.dev/
 - Source (open source, MIT): https://github.com/Agentic-Guides/the-last-word
-- Sitemap: https://webmcp-notary.pages.dev/sitemap.xml
-- About: https://webmcp-notary.pages.dev/about
-- Contact: https://webmcp-notary.pages.dev/contact
-- Privacy: https://webmcp-notary.pages.dev/privacy
+- Sitemap: https://the-last-word.pages.dev/sitemap.xml
+- About: https://the-last-word.pages.dev/about
+- Contact: https://the-last-word.pages.dev/contact
+- Privacy: https://the-last-word.pages.dev/privacy
 
 ## Contact
 

@@ -14,4 +14,4 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
-Sitemap: https://webmcp-notary.pages.dev/sitemap.xml
+Sitemap: https://the-last-word.pages.dev/sitemap.xml
