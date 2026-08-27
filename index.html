@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Notary — Human Approval for Irreversible Agent Actions</title>
+<title>The Last Word — Human Approval for Irreversible Agent Actions</title>
 <style>
   :root { --ink:#1a1a2e; --accent:#e94560; --paper:#f5f0e8; --ok:#2ec4b6; --warn:#f4a261; }
   * { box-sizing:border-box; }
@@ -25,6 +25,12 @@
   .approval .amount { font-size:26px; font-weight:800; color:var(--accent); }
   .approval .detail { font-size:14px; margin:4px 0; }
   .approval .warn { font-size:12px; color:#b0223a; font-weight:700; }
+  .diffbox { background:#f5f0e8; border:1px solid #e0d5c0; border-radius:8px; padding:10px 12px; margin:8px 0; font-size:13px; }
+  .diffrow { display:flex; gap:10px; padding:3px 0; align-items:baseline; }
+  .difflabel { width:110px; font-weight:800; color:#777; flex-shrink:0; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+  .diffval { flex:1; }
+  .diffval.match { color:var(--ok); font-weight:700; }
+  .diffval.mismatch { color:var(--accent); font-weight:700; }
   #audit { font-family:monospace; font-size:12px; background:#1a1a2e; color:#7ee787; padding:14px; border-radius:8px; white-space:pre-wrap; max-height:200px; overflow:auto; }
   .pill { display:inline-block; padding:2px 10px; border-radius:99px; font-size:11px; font-weight:800; }
   .pill.agent { background:#d4f7f3; color:#0b7d70; }
@@ -36,7 +42,7 @@
 </head>
 <body>
 <header>
-  <h1>⚖️ Notary</h1>
+  <h1>🗣️ The Last Word</h1>
   <span class="tag">Human approval for irreversible agent actions</span>
   <span class="pill agent">AGENT</span><span class="pill human">HUMAN</span>
 </header>
@@ -63,7 +69,22 @@
   <!-- Step 3: Human approval gate (the Notary core) -->
   <div class="card approval" id="approvalCard" style="display:none">
     <h2>⚠️ Irreversible action — requires your approval</h2>
-    <p>The agent wants to execute the following. This <b>cannot be undone</b>.</p>
+    <p>Compare what you asked for against what the agent prepared. <b>This cannot be undone</b>.</p>
+    <!-- 差分表示：依頼 vs 準備結果 -->
+    <div class="diffbox">
+      <div class="diffrow">
+        <span class="difflabel">You asked</span>
+        <span class="diffval" id="diffRequest"></span>
+      </div>
+      <div class="diffrow">
+        <span class="difflabel">Agent prepared</span>
+        <span class="diffval" id="diffPrepared"></span>
+      </div>
+      <div class="diffrow">
+        <span class="difflabel">Check</span>
+        <span class="diffval" id="diffCheck"></span>
+      </div>
+    </div>
     <div class="amount" id="approvalAmount">$1,200.00</div>
     <div class="detail" id="approvalDetail"></div>
     <div class="warn" id="approvalWarn">This action is irreversible. Review carefully before approving.</div>
@@ -105,6 +126,24 @@ function setStatus(id, text) {
   document.getElementById(id).textContent = text;
 }
 
+/* 本物のSHA-256ハッシュ（Web Crypto API）— 監査ログを偽物でなく実ハッシュにする */
+async function sha256(text) {
+  const data = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/* ---- 依頼文から金額・受取人を抽出（人間語ログの元） ---- */
+function parseRequest(inst) {
+  // 金額: ドル記号の付いた数を優先（$1,200 を拾う。invoice #2041 の # は拾わない）
+  const amountMatch = inst.match(/\$\s*([\d,]+\.?\d*)/);
+  const amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '';
+  // payee = "to X" のX
+  const payeeMatch = inst.match(/to\s+([A-Z][\w\s]+?)(?:\s+for|\s*$)/i);
+  const payee = payeeMatch ? payeeMatch[1].trim() : 'Acme Corp';
+  return { amount, payee };
+}
+
 /* ---- Step 1: user instruction ---- */
 function startAgent() {
   const inst = document.getElementById('instruction').value;
@@ -113,11 +152,11 @@ function startAgent() {
   const prepLog = document.getElementById('prepLog');
   prepLog.textContent = '';
   const steps = [
-    '→ fetching invoice #2041…',
-    '→ verifying amount: $1,200.00 ✓',
-    '→ validating payee: Acme Corp ✓',
-    '→ preparing payment form…',
-    '→ ⚠️ irreversible step reached — pausing for human approval'
+    '✓ Invoice found (invoice #2041)',
+    '✓ Amount checked: matches what you asked',
+    '✓ Payee checked: matches what you asked',
+    '→ Preparing payment…',
+    '⚠️ Irreversible step reached — pausing for your approval'
   ];
   let i = 0;
   const timer = setInterval(() => {
@@ -126,34 +165,48 @@ function startAgent() {
       i++;
     } else {
       clearInterval(timer);
-      // Show the approval gate
+      // Show the approval gate with request-vs-prepared diff
+      const req = parseRequest(inst);
+      const requested = (inst || 'Pay invoice #2041 for $1,200 to Acme Corp').trim();
+      const prepared = `Pay ${req.amount ? '$'+req.amount : '$1,200.00'} to ${req.payee}`;
+      const isMatch = true; // デモでは一致
+      document.getElementById('diffRequest').textContent = requested;
+      document.getElementById('diffPrepared').textContent = prepared;
+      const checkEl = document.getElementById('diffCheck');
+      checkEl.textContent = '✓ Amount and payee match your request';
+      checkEl.className = 'diffval match';
       document.getElementById('approvalCard').style.display = 'block';
+      document.getElementById('approvalAmount').textContent = '$' + (req.amount || '1,200.00');
       document.getElementById('approvalDetail').innerHTML =
-        'Payee: <b>Acme Corp</b><br/>Invoice: <b>#2041</b><br/>Amount: <b>$1,200.00</b><br/>Method: <b>Bank transfer</b>';
+        'Payee: <b>' + req.payee + '</b><br/>Invoice: <b>#2041</b><br/>Amount: <b>$' + (req.amount || '1,200.00') + '</b><br/>Method: <b>Bank transfer</b>';
       setStatus('approvalStatus', '⏳ Awaiting human approval…');
-      logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'request_approval', detail: 'payment $1,200 to Acme Corp' });
+      logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'request_approval', detail: 'payment $' + (req.amount || '1,200.00') + ' to ' + req.payee });
     }
   }, 600);
 }
 
 /* ---- Step 3: human approval ---- */
-function approve() {
+async function approve() {
   const btn = document.getElementById('approveBtn');
   btn.disabled = true;
   setStatus('approvalStatus', '✅ Approved & signed. Executing…');
-  logAudit({ ts: new Date().toISOString(), who: 'HUMAN', action: 'APPROVE', detail: 'payment $1,200 to Acme Corp', hash: 'sha256:'+Math.random().toString(16).slice(2,18) });
+  // 本物のSHA-256ハッシュ（タイムスタンプ+内容+承認者）
+  const ts = new Date().toISOString();
+  const payload = `APPROVE|${ts}|payment to ${document.getElementById('diffPrepared').textContent}`;
+  const hash = await sha256(payload);
+  logAudit({ ts, who: 'HUMAN', action: 'APPROVE', detail: 'payment', hash: 'sha256:' + hash });
   setTimeout(() => {
-    logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'EXECUTE', detail: 'payment $1,200 to Acme Corp — completed' });
-    setStatus('approvalStatus', '✅ Payment executed. Recorded in audit log.');
+    logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'EXECUTE', detail: 'payment completed' });
+    setStatus('approvalStatus', '✅ Payment executed. Signed + recorded in audit log.');
     document.getElementById('approvalCard').style.display = 'none';
     document.getElementById('prepCard').style.display = 'none';
-    setStatus('step1status', '✅ Done. See audit log below.');
+    setStatus('step1status', '✅ Done. Signed approval recorded below.');
   }, 800);
 }
 
 function reject() {
   setStatus('approvalStatus', '✖ Rejected by human. Action cancelled.');
-  logAudit({ ts: new Date().toISOString(), who: 'HUMAN', action: 'REJECT', detail: 'payment $1,200 to Acme Corp' });
+  logAudit({ ts: new Date().toISOString(), who: 'HUMAN', action: 'REJECT', detail: 'payment' });
   document.getElementById('approvalCard').style.display = 'none';
   document.getElementById('prepCard').style.display = 'none';
   setStatus('step1status', '✖ Cancelled. Nothing was executed.');
