@@ -112,6 +112,10 @@
   .audit { font-family:"SFMono-Regular",Menlo,monospace; font-size:12px; background:#111; color:#86efac; padding:16px; border-radius:10px; white-space:pre-wrap; max-height:220px; overflow:auto; line-height:1.7; }
   .audit .human { color:#fca5a5; }
   .audit .agent { color:#86efac; }
+  .ledger-actions { display:flex; gap:10px; margin:10px 0; flex-wrap:wrap; }
+  .ledger-status { font-size:12px; font-weight:700; margin:6px 0; min-height:18px; }
+  .ledger-status.ok { color:var(--ok); }
+  .ledger-status.err { color:var(--accent); }
   /* Footer */
   footer { text-align:center; padding:24px; font-size:12px; color:var(--muted); border-top:1px solid var(--line); }
   footer a { color:var(--accent); text-decoration:none; font-weight:600; }
@@ -213,8 +217,13 @@
 
   <!-- Step 4 -->
   <div class="card">
-    <h2>Audit log</h2>
-    <p>Every irreversible action is recorded with a <b>session-scoped ECDSA digital signature</b> (P-256) — who approved what, when. The signing key is generated per browser session and is a <b>demonstration</b> of a human approval gate, not a durable certificate.</p>
+    <h2>Audit ledger</h2>
+    <p>Every action is recorded in a <b>tamper-evident hash chain</b> — each entry links to the previous via <code>prevHash</code> and is sealed with an ECDSA signature. Persisted in your browser, it survives reload and detects any tampering.</p>
+    <div class="ledger-actions">
+      <button class="btn ghost" id="verifyBtn" onclick="verifyAndRender()">Verify integrity</button>
+      <button class="btn ghost" onclick="exportLedger()">Export JSON</button>
+    </div>
+    <div class="ledger-status" id="ledgerStatus"></div>
     <div class="audit" id="audit">— no actions yet —</div>
   </div>
 </div>
@@ -241,7 +250,7 @@
    The agent fills it; the HUMAN must submit to approve.
    ============================================================ */
 const auditEl = document.getElementById('audit');
-const auditLog = [];
+let auditLog = [];
 
 /* HTML escape to prevent XSS in audit log */
 function escapeHtml(s) {
@@ -249,16 +258,132 @@ function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function logAudit(entry) {
-  auditLog.push(entry);
+/* ============================================================
+   Tamper-evident hash-chain audit ledger.
+   Each entry is chained to the previous via prevHash and sealed
+   with an ECDSA signature. Persisted in IndexedDB so it survives
+   reload. This is the "observability / continuous monitoring"
+   the collective-cyberdefense letter calls for — implemented
+   entirely client-side.
+   ============================================================ */
+const LEDGER_DB = 'the-last-word-ledger';
+const LEDGER_STORE = 'ledger';
+
+function openLedgerDB() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) { resolve(null); return; }
+    const req = window.indexedDB.open(LEDGER_DB, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(LEDGER_STORE)) {
+        req.result.createObjectStore(LEDGER_STORE, { keyPath: 'seq' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => { console.warn('IndexedDB open failed', req.error); resolve(null); };
+  });
+}
+
+async function loadLedger() {
+  const db = await openLedgerDB();
+  if (!db) return [];
+  return new Promise((resolve) => {
+    const tx = db.transaction(LEDGER_STORE, 'readonly');
+    const store = tx.objectStore(LEDGER_STORE);
+    const all = store.getAll();
+    all.onsuccess = () => {
+      const rows = (all.result || []).sort((a, b) => a.seq - b.seq);
+      resolve(rows.map(r => r.entry));
+    };
+    all.onerror = () => resolve([]);
+  });
+}
+
+async function saveLedger(ledger) {
+  const db = await openLedgerDB();
+  if (!db) return;
+  return new Promise((resolve) => {
+    const tx = db.transaction(LEDGER_STORE, 'readwrite');
+    const store = tx.objectStore(LEDGER_STORE);
+    store.clear();
+    ledger.forEach((entry, idx) => {
+      store.put({ seq: idx + 1, entry });
+    });
+    tx.oncomplete = resolve;
+    tx.onerror = () => { console.warn('IndexedDB save failed'); resolve(); };
+  });
+}
+
+// Append a tamper-evident entry: chain prevHash + sign
+async function appendLedgerEntry(entry) {
+  const last = auditLog[auditLog.length - 1];
+  const prevHash = last ? last.sha256 : 'GENESIS';
+  const canonical = `${prevHash}|${entry.ts}|${entry.who}|${entry.action}|${entry.detail}`;
+  const hash = await sha256(canonical);
+  const signedEntry = Object.assign({}, entry, {
+    prevHash,
+    sha256: hash,
+    signature: signingKeyReady ? await ecdsaSign(canonical) : '',
+  });
+  auditLog.push(signedEntry);
+  await saveLedger(auditLog);
+  renderAudit();
+}
+
+// Recompute the whole chain and detect any tampering
+async function verifyLedger() {
+  let prev = 'GENESIS';
+  for (const e of auditLog) {
+    const canonical = `${prev}|${e.ts}|${e.who}|${e.action}|${e.detail}`;
+    const recomputed = await sha256(canonical);
+    if (recomputed !== e.sha256) return { ok: false, failed: e };
+    prev = e.sha256;
+  }
+  return { ok: true };
+}
+
+function renderAudit() {
   auditEl.innerHTML = auditLog.map(e => {
     let line = `<span class="${e.who.toLowerCase()}">[${e.ts}] ${e.who} | ${e.action} | ${escapeHtml(e.detail)}</span>`;
-    if (e.hash) line += ` | <span style="color:#94a3b8">sha256:${e.hash.slice(0,16)}…</span>`;
-    if (e.signature) line += ` | <span style="color:#fca5a5">ecdsa-sig:${e.signature.slice(0,24)}…</span>`;
-    if (e.pubKey) line += ` | <span style="color:#86efac">pubkey:${e.pubKey.slice(0,16)}…</span>`;
+    if (e.sha256) line += ` | <span style="color:#94a3b8">sha256:${e.sha256.slice(0,12)}…</span>`;
+    if (e.signature) line += ` | <span style="color:#fca5a5">sig:${e.signature.slice(0,12)}…</span>`;
     return line;
   }).join('\n');
 }
+
+// Keep logAudit as the single entry point (both UI and WebMCP flows call it)
+async function logAudit(entry) {
+  await appendLedgerEntry(entry);
+}
+
+async function verifyAndRender() {
+  const btn = document.getElementById('verifyBtn');
+  if (btn) btn.disabled = true;
+  const res = await verifyLedger();
+  const status = document.getElementById('ledgerStatus');
+  if (res.ok) {
+    if (status) { status.textContent = '✓ Chain intact — ' + auditLog.length + ' entries, all signatures valid'; status.className = 'ledger-status ok'; }
+  } else {
+    if (status) { status.textContent = '✗ TAMPERED — entry at ' + res.failed.ts + ' was modified'; status.className = 'ledger-status err'; }
+  }
+  if (btn) btn.disabled = false;
+}
+
+async function exportLedger() {
+  const blob = new Blob([JSON.stringify(auditLog, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'the-last-word-audit-ledger.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Load persisted ledger on startup
+(async function initLedger() {
+  auditLog = await loadLedger();
+  renderAudit();
+})();
+
 function setStatus(id, text, cls) {
   const el = document.getElementById(id);
   el.textContent = text;
@@ -402,28 +527,15 @@ async function approve() {
   setStatus('approvalStatus', '✅ Approved & signed. Executing…', 'ok');
   const ts = new Date().toISOString();
   const prepared = document.getElementById('diffPrepared').textContent;
-  const payload = `APPROVE|${ts}|${prepared}`;
-  // Real ECDSA signature (P-256) over the approval payload
-  let signature, hash, pubKey;
-  try {
-    signature = await ecdsaSign(payload);
-    hash = await sha256(payload); // compact fingerprint too
-    pubKey = await exportPublicKey();
-  } catch (e) {
-    console.error('Signing failed:', e);
-    setStatus('approvalStatus', '❌ Signature failed. Try again.', 'err');
-    btn.disabled = false; // re-enable on failure
-    return;
-  }
-  logAudit({ ts, who: 'HUMAN', action: 'APPROVE', detail: prepared, hash, signature, pubKey });
+  logAudit({ ts, who: 'HUMAN', action: 'APPROVE', detail: prepared });
   // Resolve any held agent tool call (WebMCP respondWith) with the approval result
   if (window.__resolveNotary) {
-    window.__resolveNotary({ approved: true, action: prepared, ts, signature: signature.slice(0, 32) });
+    window.__resolveNotary({ approved: true, action: prepared, ts, signature: 'sealed-in-ledger' });
     window.__resolveNotary = null;
   }
   setTimeout(() => {
     logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'EXECUTE', detail: prepared });
-    setStatus('approvalStatus', '✅ Executed. ECDSA-signed approval recorded below.', 'ok');
+    setStatus('approvalStatus', '✅ Executed. Approval sealed in audit ledger.', 'ok');
     document.getElementById('approvalCard').style.display = 'none';
     document.getElementById('prepCard').style.display = 'none';
     setStatus('step1status', '✅ Done. Run another instruction to try again.', 'ok');

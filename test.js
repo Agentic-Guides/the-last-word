@@ -61,7 +61,8 @@ function assert(cond, msg) { if (!cond) throw new Error('FAIL: ' + msg); console
   await window.approve();
   await sleep(1200);
   const audit = d.getElementById('audit').textContent;
-  assert(audit.includes('ecdsa-sig:'), 'audit has ECDSA signature: ' + (audit.match(/ecdsa-sig:([0-9a-f]{16})/) ? 'present' : 'NONE'));
+  assert(audit.includes('sig:'), 'audit has ECDSA signature: ' + (audit.match(/sig:([0-9a-f]{12})/) ? 'present' : 'NONE'));
+  assert(audit.includes('sha256:'), 'audit has chained SHA-256 hash');
   assert(audit.includes('APPROVE'), 'audit records approval');
   assert(audit.includes('EXECUTE'), 'audit records execution');
 
