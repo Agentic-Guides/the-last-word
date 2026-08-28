@@ -366,13 +366,13 @@ function startAgent() {
         prepared = `Delete ${req.target}`;
         checkText = '✓ Target matches your request';
         amountText = '⚠️ IRREVERSIBLE';
-        detailHtml = 'Target: <b>' + req.target + '</b> &nbsp;·&nbsp; Scope: <b>Permanent</b> &nbsp;·&nbsp; Recovery: <b>None</b>';
+        detailHtml = 'Target: <b>' + escapeHtml(req.target) + '</b> &nbsp;·&nbsp; Scope: <b>Permanent</b> &nbsp;·&nbsp; Recovery: <b>None</b>';
         auditDetail = 'delete ' + req.target;
       } else {
         prepared = `Pay ${req.amount ? '$'+req.amount : '$1,200.00'} to ${req.payee}`;
         checkText = '✓ Amount and payee match your request';
         amountText = '$' + (req.amount || '1,200.00');
-        detailHtml = 'Payee: <b>' + req.payee + '</b> &nbsp;·&nbsp; Invoice: <b>#2041</b> &nbsp;·&nbsp; Method: <b>Bank transfer</b>';
+        detailHtml = 'Payee: <b>' + escapeHtml(req.payee) + '</b> &nbsp;·&nbsp; Invoice: <b>#2041</b> &nbsp;·&nbsp; Method: <b>Bank transfer</b>';
         auditDetail = 'payment $' + (req.amount || '1,200.00') + ' to ' + req.payee;
       }
       document.getElementById('diffRequest').textContent = requested;
