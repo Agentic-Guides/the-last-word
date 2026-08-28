@@ -69,5 +69,19 @@ function assert(cond, msg) { if (!cond) throw new Error('FAIL: ' + msg); console
   const approveBtn = d.getElementById('approveBtn');
   assert(approveBtn.disabled === false, 'approve button re-enabled after execution');
 
-  console.log('\nALL LAST WORD TESTS PASSED — ECDSA signature + diff display + human approval + retry all work.');
+  // 6. Second use case: data deletion
+  d.getElementById('instruction').value = 'Delete my account and all data';
+  window.startAgent();
+  await sleep(6000);
+  assert(d.getElementById('approvalCard').style.display === 'block', 'delete approval gate appears');
+  const delPrep = d.getElementById('diffPrepared').textContent;
+  assert(delPrep.includes('Delete') && delPrep.includes('account'), 'delete diff shows target: ' + delPrep);
+  const delAmount = d.getElementById('approvalAmount').textContent;
+  assert(delAmount.includes('IRREVERSIBLE'), 'delete shows IRREVERSIBLE warning');
+  await window.approve();
+  await sleep(1200);
+  const delAudit = d.getElementById('audit').textContent;
+  assert(delAudit.includes('delete') && delAudit.includes('APPROVE'), 'delete audit records approval');
+
+  console.log('\nALL LAST WORD TESTS PASSED — ECDSA signature + diff display + human approval + retry + delete use-case all work.');
 })().catch(e => { console.error(e.message); process.exit(1); });

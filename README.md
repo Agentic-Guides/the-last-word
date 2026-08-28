@@ -11,10 +11,12 @@ WebMCP lets websites expose structured tools that an agent can call *inside the 
 We use the **WebMCP Declarative API**: the approval form is exposed to the agent via `toolname="notary.approve"` with `tooldescription` and per-input `toolparamtitle` / `toolparamdescription`. When the agent invokes it, the browser focuses and fills the form, and the **human must submit** to approve. Every irreversible action is recorded in an audit log with a **session-scoped ECDSA digital signature (P-256)** (who, what, when, signature).
 
 ## What people and agents can do together
-- **Agent** prepares the action end-to-end: fetches the invoice, verifies the amount, fills the form.
+- **Agent** prepares the action end-to-end: fetches the invoice, verifies the amount, fills the form — or locates the data to delete and confirms the scope.
 - **The Last Word** intercepts at the irreversible step and shows a **request-vs-prepared diff** — what you asked for, side by side with what the agent prepared, with a match/mismatch check. You don't have to remember anything.
 - **Human** reviews, and approves with an ECDSA signature — or rejects.
 - **Audit log** records the action with a session-scoped ECDSA signature and a SHA-256 fingerprint — so an agent can never claim "I didn't approve that."
+
+Two irreversible use cases are demonstrated: **payments** (`notary.approve`) and **data deletion** (`notary.delete`). Both pause at the gate until a human signs off.
 
 This was difficult or impossible before WebMCP: previously an agent acted on your behalf in the dark, and you had no clean, standard way to gate a single irreversible action *inside the same context the agent operates in*.
 

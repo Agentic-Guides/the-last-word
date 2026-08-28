@@ -84,6 +84,8 @@
   .btn.ghost:hover { background:var(--bg); }
   .btn:disabled { opacity:.5; cursor:not-allowed; }
   .status { font-size:13px; margin-top:12px; color:var(--muted); }
+  .hint { font-size:12px; color:var(--muted); margin-top:10px; }
+  .hint code { background:var(--bg); padding:2px 6px; border-radius:4px; font-size:11px; }
   .status.ok { color:var(--ok); font-weight:600; }
   .status.err { color:var(--accent); font-weight:600; }
   .prep-log { font-family:"SFMono-Regular",Menlo,monospace; font-size:13px; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:16px; white-space:pre-wrap; color:var(--ink); }
@@ -165,13 +167,14 @@
   <!-- Step 1 -->
   <div class="card">
     <h2>Try it</h2>
-    <p>Tell the agent to pay an invoice. Watch it prepare the action, then approve or reject at the gate.</p>
+    <p>Tell the agent to <b>pay an invoice</b> or <b>delete data</b>. Watch it prepare the action, then approve or reject at the gate.</p>
     <label for="instruction">Your instruction</label>
     <div class="input-row">
       <textarea id="instruction" rows="4">Pay invoice #2041 for $1,200 to Acme Corp</textarea>
       <button class="btn primary" onclick="startAgent()">Run agent</button>
     </div>
     <div class="status" id="step1status"></div>
+    <p class="hint">Try: <code>Pay invoice #2041 for $1,200 to Acme Corp</code> or <code>Delete my account and all data</code></p>
   </div>
 
   <!-- Step 2 -->
@@ -310,13 +313,23 @@ async function sha256(text) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/* Parse request: amount ($X) and payee ("to X") */
+/* Parse request: detect action type (payment vs delete) and extract fields */
 function parseRequest(inst) {
+  const lower = inst.toLowerCase();
+  // Detect deletion: "delete X", "remove X", "erase X", "cancel account"
+  const isDelete = /delete|remove|erase|cancel\s+(account|subscription|order)/.test(lower);
+  if (isDelete) {
+    // Extract the thing to delete: after delete/remove/erase
+    const targetMatch = inst.match(/(?:delete|remove|erase)\s+(.+)/i);
+    const target = targetMatch ? targetMatch[1].trim() : 'the account';
+    return { type: 'delete', target };
+  }
+  // Default: payment
   const amountMatch = inst.match(/\$\s*([\d,]+\.?\d*)/);
   const amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '';
   const payeeMatch = inst.match(/to\s+([A-Z][\w\s]+?)(?:\s+for|\s*$)/i);
   const payee = payeeMatch ? payeeMatch[1].trim() : 'Acme Corp';
-  return { amount, payee };
+  return { type: 'payment', amount, payee };
 }
 
 /* Step 1: run agent */
@@ -326,7 +339,14 @@ function startAgent() {
   document.getElementById('prepCard').style.display = 'block';
   const prepLog = document.getElementById('prepLog');
   prepLog.innerHTML = '';
-  const steps = [
+  const req = parseRequest(inst);
+  const isDelete = req.type === 'delete';
+  const steps = isDelete ? [
+    ['ok','✓ Account found (user: jane@example.com)'],
+    ['ok','✓ Data scope checked: matches what you asked'],
+    ['','→ Preparing deletion…'],
+    ['','⚠️ Irreversible step reached — pausing for your approval']
+  ] : [
     ['ok','✓ Invoice found (invoice #2041)'],
     ['ok','✓ Amount checked: matches what you asked'],
     ['ok','✓ Payee checked: matches what you asked'],
@@ -340,20 +360,31 @@ function startAgent() {
       i++;
     } else {
       clearInterval(timer);
-      const req = parseRequest(inst);
       const requested = (inst || 'Pay invoice #2041 for $1,200 to Acme Corp').trim();
-      const prepared = `Pay ${req.amount ? '$'+req.amount : '$1,200.00'} to ${req.payee}`;
+      let prepared, checkText, amountText, detailHtml, auditDetail;
+      if (isDelete) {
+        prepared = `Delete ${req.target}`;
+        checkText = '✓ Target matches your request';
+        amountText = '⚠️ IRREVERSIBLE';
+        detailHtml = 'Target: <b>' + req.target + '</b> &nbsp;·&nbsp; Scope: <b>Permanent</b> &nbsp;·&nbsp; Recovery: <b>None</b>';
+        auditDetail = 'delete ' + req.target;
+      } else {
+        prepared = `Pay ${req.amount ? '$'+req.amount : '$1,200.00'} to ${req.payee}`;
+        checkText = '✓ Amount and payee match your request';
+        amountText = '$' + (req.amount || '1,200.00');
+        detailHtml = 'Payee: <b>' + req.payee + '</b> &nbsp;·&nbsp; Invoice: <b>#2041</b> &nbsp;·&nbsp; Method: <b>Bank transfer</b>';
+        auditDetail = 'payment $' + (req.amount || '1,200.00') + ' to ' + req.payee;
+      }
       document.getElementById('diffRequest').textContent = requested;
       document.getElementById('diffPrepared').textContent = prepared;
       const checkEl = document.getElementById('diffCheck');
-      checkEl.textContent = '✓ Amount and payee match your request';
+      checkEl.textContent = checkText;
       checkEl.className = 'diffval match';
       document.getElementById('approvalCard').style.display = 'block';
-      document.getElementById('approvalAmount').textContent = '$' + (req.amount || '1,200.00');
-      document.getElementById('approvalDetail').innerHTML =
-        'Payee: <b>' + req.payee + '</b> &nbsp;·&nbsp; Invoice: <b>#2041</b> &nbsp;·&nbsp; Method: <b>Bank transfer</b>';
+      document.getElementById('approvalAmount').textContent = amountText;
+      document.getElementById('approvalDetail').innerHTML = detailHtml;
       setStatus('approvalStatus', '⏳ Awaiting your decision…');
-      logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'request_approval', detail: 'payment $' + (req.amount || '1,200.00') + ' to ' + req.payee });
+      logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'request_approval', detail: auditDetail });
     }
   }, 600);
 }
@@ -414,13 +445,19 @@ function reject() {
 }
 </script>
 
-<!-- WebMCP Declarative API: the agent-facing tool -->
+<!-- WebMCP Declarative API: the agent-facing tools -->
 <form id="notaryForm" toolname="notary.approve"
   tooldescription="Approve an irreversible payment action. Requires human confirmation."
   style="display:none">
   <input name="amount" id="fAmount" toolparamtitle="Amount" toolparamdescription="The amount to pay, e.g. 1200.00" />
   <input name="payee" id="fPayee" toolparamtitle="Payee" toolparamdescription="The payee name" />
   <button type="submit">Approve</button>
+</form>
+<form id="notaryDeleteForm" toolname="notary.delete"
+  tooldescription="Approve an irreversible data deletion. Requires human confirmation."
+  style="display:none">
+  <input name="target" id="fTarget" toolparamtitle="Target" toolparamdescription="What to delete, e.g. my account and all data" />
+  <button type="submit">Approve deletion</button>
 </form>
 <script>
 const form = document.getElementById('notaryForm');
@@ -444,6 +481,34 @@ form.addEventListener('submit', (e) => {
     // Hold the agent's tool call open until the human decides.
     pendingAgentResponse = new Promise((resolve) => {
       // store resolution on window so approve()/reject() can settle it
+      window.__resolveNotary = resolve;
+    });
+    e.respondWith(pendingAgentResponse);
+  } else {
+    pendingAgentResponse = null;
+    window.__resolveNotary = null;
+  }
+});
+
+// Delete tool: same human-in-the-loop gate, for irreversible data deletion
+const deleteForm = document.getElementById('notaryDeleteForm');
+deleteForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const target = document.getElementById('fTarget').value || 'my account and all data';
+  const prepared = 'Delete ' + target;
+  document.getElementById('diffRequest').textContent = 'Delete ' + target;
+  document.getElementById('diffPrepared').textContent = prepared;
+  document.getElementById('diffCheck').textContent = '✓ Target matches your request';
+  document.getElementById('diffCheck').className = 'diffval match';
+  document.getElementById('approvalAmount').textContent = '⚠️ IRREVERSIBLE';
+  document.getElementById('approvalDetail').innerHTML =
+    'Target: <b>' + target + '</b> &nbsp;·&nbsp; Scope: <b>Permanent</b> &nbsp;·&nbsp; Recovery: <b>None</b>';
+  document.getElementById('approvalCard').style.display = 'block';
+  setStatus('approvalStatus', '⏳ Agent invoked deletion — review required…');
+  logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'invoke_notary.delete', detail: target });
+
+  if (e.agentInvoked && typeof e.respondWith === 'function') {
+    pendingAgentResponse = new Promise((resolve) => {
       window.__resolveNotary = resolve;
     });
     e.respondWith(pendingAgentResponse);

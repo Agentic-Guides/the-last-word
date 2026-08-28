@@ -17,7 +17,7 @@ Do NOT use this site for reversible actions, read-only queries, or anything that
 
 ## How an agent uses it
 
-The site exposes one WebMCP Declarative API tool:
+The site exposes two WebMCP Declarative API tools:
 
 ### `notary.approve`
 
@@ -27,9 +27,16 @@ Approve an irreversible payment action. Requires human confirmation.
 - `amount` (string): the amount to pay, e.g. `1200.00`
 - `payee` (string): the payee name
 
-**Flow:**
-1. Agent fills the `notary.approve` form with `amount` and `payee`.
-2. The human reviews the prepared action (amount, payee, irreversibility warning).
+### `notary.delete`
+
+Approve an irreversible data deletion. Requires human confirmation.
+
+**Parameters:**
+- `target` (string): what to delete, e.g. `my account and all data`
+
+**Flow (both tools):**
+1. Agent fills the form with the required parameters.
+2. The human reviews the prepared action (amount/payee, or delete target, plus irreversibility warning).
 3. The human clicks **Approve & Sign** — a real ECDSA digital signature (P-256) is generated over the approval payload.
 4. The audit log records who approved what, when, with the signature and public key.
 
