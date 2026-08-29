@@ -39,7 +39,7 @@ Approve an irreversible data deletion. Requires human confirmation.
 2. The tool call is **held open** via `respondWith()` — the agent's call does not resolve until the human decides.
 3. The human reviews the prepared action (amount/payee, or delete target, plus irreversibility warning).
 4. The human clicks **Approve & Sign** — a real ECDSA digital signature (P-256) is generated over the approval payload — or **Reject** to block it.
-5. The held tool call resolves with the human's decision, and the audit log records who approved what, when, with the signature and public key.
+5. The held tool call resolves with the human's decision, and the audit log records who approved what, when, with the signature and SHA-256 fingerprint.
 
 ## Key URLs
 
