@@ -373,7 +373,7 @@ async function verifyAndRender() {
   const res = await verifyLedger();
   const status = document.getElementById('ledgerStatus');
   if (res.ok) {
-    if (status) { status.textContent = '✓ Chain intact — ' + auditLog.length + ' entries, all signatures valid'; status.className = 'ledger-status ok'; }
+    if (status) { status.textContent = '✓ Chain intact — ' + auditLog.length + ' entries, all hashes chained'; status.className = 'ledger-status ok'; }
   } else {
     if (status) { status.textContent = '✗ TAMPERED — entry at ' + res.failed.ts + ' was modified'; status.className = 'ledger-status err'; }
   }
@@ -595,8 +595,12 @@ form.addEventListener('submit', (e) => {
   const amount = document.getElementById('fAmount').value;
   const payee = document.getElementById('fPayee').value;
   const prepared = 'Pay $' + amount + ' to ' + payee;
-  document.getElementById('approvalAmount').textContent = '$' + amount;
+  document.getElementById('diffRequest').textContent = 'Pay $' + amount + ' to ' + payee;
   document.getElementById('diffPrepared').textContent = prepared;
+  document.getElementById('diffCheck').textContent = '✓ Amount and payee match your request';
+  document.getElementById('diffCheck').className = 'diffval match';
+  document.getElementById('approvalAmount').textContent = '$' + amount;
+  document.getElementById('approvalDetail').innerHTML = 'Payee: <b>' + escapeHtml(payee) + '</b> &nbsp;·&nbsp; Invoice: <b>#2041</b> &nbsp;·&nbsp; Method: <b>Bank transfer</b>';
   document.getElementById('approvalCard').style.display = 'block';
   setStatus('approvalStatus', '⏳ Agent invoked approval — review required…');
   logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'invoke_notary.approve', detail: amount + ' to ' + payee });
@@ -626,7 +630,7 @@ deleteForm.addEventListener('submit', (e) => {
   document.getElementById('diffCheck').className = 'diffval match';
   document.getElementById('approvalAmount').textContent = '⚠️ IRREVERSIBLE';
   document.getElementById('approvalDetail').innerHTML =
-    'Target: <b>' + target + '</b> &nbsp;·&nbsp; Scope: <b>Permanent</b> &nbsp;·&nbsp; Recovery: <b>None</b>';
+    'Target: <b>' + escapeHtml(target) + '</b> &nbsp;·&nbsp; Scope: <b>Permanent</b> &nbsp;·&nbsp; Recovery: <b>None</b>';
   document.getElementById('approvalCard').style.display = 'block';
   setStatus('approvalStatus', '⏳ Agent invoked deletion — review required…');
   logAudit({ ts: new Date().toISOString(), who: 'AGENT', action: 'invoke_notary.delete', detail: target });

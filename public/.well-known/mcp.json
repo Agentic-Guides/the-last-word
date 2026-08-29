@@ -1,6 +1,6 @@
 {
   "name": "the-last-word",
-  "description": "The Last Word — human approval gate for irreversible AI agent actions. Exposes the notary.approve tool for human-in-the-loop approval.",
+  "description": "The Last Word — human approval gate for irreversible AI agent actions. Exposes the notary.approve and notary.delete tools for human-in-the-loop approval.",
   "tools": [
     {
       "name": "notary.approve",
@@ -12,6 +12,17 @@
           "payee": { "type": "string", "description": "The payee name" }
         },
         "required": ["amount", "payee"]
+      }
+    },
+    {
+      "name": "notary.delete",
+      "description": "Delete data irreversibly. Requires human confirmation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": { "type": "string", "description": "The data/account to delete, e.g. my account and all data" }
+        },
+        "required": ["target"]
       }
     }
   ]
