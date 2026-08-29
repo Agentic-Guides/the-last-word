@@ -49,11 +49,19 @@ python -m http.server 8080
 ```
 
 ## Test
-```
+```bash
 npm install jsdom
 node test.js
 # ALL LAST WORD TESTS PASSED — ECDSA signature + diff display + human approval + retry all work.
 ```
+
+## Try it live (for judges)
+
+1. **Open** https://the-last-word.pages.dev. Before testing, clear the persisted ledger so it starts empty: press **F12** → **Application** → **IndexedDB** → `the-last-word-ledger` → **Delete database** → refresh.
+2. **Approve a payment** — leave the default instruction `Pay invoice #2041 for $1,200 to Acme Corp` (or type it) → click **Run agent** → review the request-vs-prepared diff → click **Approve & Sign**.
+3. **Reject a deletion** — change the text to `Delete my account and all data` → click **Run agent** → click **Reject**. The ledger records `HUMAN REJECT` and no `EXECUTE` runs.
+4. **Verify integrity** — click **Verify integrity** → confirm `✓ Chain intact — N entries`.
+5. **Persistence** — refresh the page → the audit ledger survives (IndexedDB durability).
 
 ## License
 MIT
