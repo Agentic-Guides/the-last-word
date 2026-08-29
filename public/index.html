@@ -186,7 +186,7 @@
     <p>Tell the agent to <b>pay an invoice</b> or <b>delete data</b>. Watch it prepare the action, then approve or reject at the gate.</p>
     <label for="instruction">Your instruction</label>
     <div class="input-row">
-      <textarea id="instruction" rows="4">Pay invoice #2041 for $1,200 to Acme Corp</textarea>
+      <textarea id="instruction" rows="4" autocapitalize="off" autocorrect="off" spellcheck="false">Pay invoice #2041 for $1,200 to Acme Corp</textarea>
       <button class="btn primary" onclick="startAgent()">Run agent</button>
     </div>
     <div class="status" id="step1status"></div>

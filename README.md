@@ -48,4 +48,4 @@ node test.js
 MIT
 
 ## WebMCP Challenge
-Built for the [WebMCP Challenge](https://openai.com/webmcp-challenge/). Demo video: https://youtu.be/<YOUR_VIDEO_ID> — *placeholder; replace with the real video ID before submission.*
+Built for the [WebMCP Challenge](https://openai.com/webmcp-challenge/). Demo video: **https://youtu.be/yBcImWjoLhM**
