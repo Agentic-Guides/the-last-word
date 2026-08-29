@@ -35,10 +35,11 @@ Approve an irreversible data deletion. Requires human confirmation.
 - `target` (string): what to delete, e.g. `my account and all data`
 
 **Flow (both tools):**
-1. Agent fills the form with the required parameters.
-2. The human reviews the prepared action (amount/payee, or delete target, plus irreversibility warning).
-3. The human clicks **Approve & Sign** — a real ECDSA digital signature (P-256) is generated over the approval payload.
-4. The audit log records who approved what, when, with the signature and public key.
+1. Agent fills the form with the required parameters and submits.
+2. The tool call is **held open** via `respondWith()` — the agent's call does not resolve until the human decides.
+3. The human reviews the prepared action (amount/payee, or delete target, plus irreversibility warning).
+4. The human clicks **Approve & Sign** — a real ECDSA digital signature (P-256) is generated over the approval payload — or **Reject** to block it.
+5. The held tool call resolves with the human's decision, and the audit log records who approved what, when, with the signature and public key.
 
 ## Key URLs
 

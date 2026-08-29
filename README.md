@@ -2,6 +2,17 @@
 
 **WebMCP Challenge submission.** The Last Word is the trust layer for the agentic web: it pauses *irreversible* agent actions (payments, deletions, contracts, transfers) and requires a human to approve — and sign — before the agent may execute. **The agent does the work; the human has the last word.**
 
+## How an agent uses it
+
+An agent discovers and calls The Last Word's tools entirely through the WebMCP Declarative API — no custom integration needed:
+
+1. **Discover** — the agent reads `llms.txt` (or `.well-known/mcp.json`) and finds two tools: `notary.approve` (payments) and `notary.delete` (data deletion), each with a `tooldescription` and per-input `toolparamtitle` / `toolparamdescription`.
+2. **Invoke** — the agent fills the form (amount + payee, or target) and submits. The browser focuses the form and the tool call is **held open** via `respondWith()`.
+3. **Human decides** — the human reviews the request-vs-prepared diff and clicks **Approve & Sign** (ECDSA P-256) or **Reject**. The held tool call resolves with the human's decision.
+4. **Audit** — every step is recorded in a tamper-evident hash-chain ledger with a SHA-256 fingerprint and ECDSA signature.
+
+This is the human-in-the-loop gate made first-class in WebMCP: the agent does the work, but the irreversible step cannot complete without a human's signed approval.
+
 ## Live demo
 **https://the-last-word.pages.dev**
 
