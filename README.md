@@ -1,5 +1,7 @@
 # 🗣️ The Last Word — Human Approval for Irreversible Agent Actions
 
+[![M8ven Score](https://m8ven.ai/badge/mcp/agentic-guides-the-last-word-wb0uxy)](https://m8ven.ai/mcp/agentic-guides-the-last-word-wb0uxy?s=readme)
+
 **WebMCP Challenge submission.** The Last Word is the trust layer for the agentic web: it pauses *irreversible* agent actions (payments, deletions, contracts, transfers) and requires a human to approve — and sign — before the agent may execute. **The agent does the work; the human has the last word.**
 
 ## How an agent uses it
